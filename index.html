@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>The Pets: Fall</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: #090d16;
+            color: #fff;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        #game-container {
+            position: relative;
+            width: 100%;
+            max-width: 450px;
+            height: 100vh;
+            box-shadow: 0 0 30px rgba(0, 0, 0, 0.8);
+            background: #0d1117;
+            overflow: hidden;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle, #1a1f29 0%, #090d16 100%);
+        }
+
+        .ui-layer {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            right: 20px;
+            display: flex;
+            justify-content: space-between;
+            pointer-events: none;
+            z-index: 5;
+        }
+
+        .score-box {
+            background: rgba(13, 17, 23, 0.85);
+            padding: 10px 20px;
+            border-radius: 12px;
+            border: 2px solid #30363d;
+            font-size: 16px;
+            font-weight: bold;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+        }
+
+        #score { color: #ffb300; }
+        #highscore { color: #00d2d3; }
+
+        #game-over-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(9, 13, 22, 0.95);
+            display: flex; 
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 20;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        #game-over-screen h1 {
+            color: #ffea00;
+            font-size: 28px;
+            margin-bottom: 5px;
+            text-shadow: 0 0 20px rgba(255, 234, 0, 0.4);
+            font-weight: bold;
+            text-align: center;
+        }
+
+        .final-score {
+            font-size: 15px;
+            margin-bottom: 15px;
+            color: #8b949e;
+            text-align: center;
+            line-height: 1.4;
+            white-space: pre-line;
+        }
+
+        .character-selection {
+            width: 90%;
+            background: rgba(21, 28, 41, 0.8);
+            border: 2px solid #30363d;
+            border-radius: 16px;
+            padding: 15px;
+            margin-bottom: 25px;
+            box-sizing: border-box;
+        }
+
+        .character-selection h3 {
+            margin: 0 0 12px 0;
+            color: #00d2d3;
+            font-size: 16px;
+            text-align: center;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .char-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+        }
+
+        .char-card {
+            background: #161b22;
+            border: 2px solid #30363d;
+            border-radius: 12px;
+            padding: 8px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        .char-card:hover {
+            transform: scale(1.05);
+        }
+
+        .char-card.selected {
+            border-color: #ffea00;
+            background: rgba(255, 234, 0, 0.1);
+            box-shadow: 0 0 10px rgba(255, 234, 0, 0.2);
+        }
+
+        .char-preview-box {
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            background: #ffa502;
+            border: 2px solid #ffea00;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 5px;
+        }
+
+        .char-preview-box img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .char-name {
+            font-size: 11px;
+            font-weight: bold;
+            color: #c9d1d9;
+            text-align: center;
+        }
+
+        .char-card.selected .char-name {
+            color: #ffea00;
+        }
+
+        #start-btn {
+            background: #2ed573;
+            border: none;
+            color: white;
+            padding: 14px 50px;
+            font-size: 18px;
+            font-weight: bold;
+            border-radius: 30px;
+            cursor: pointer;
+            box-shadow: 0 5px 15px rgba(46, 213, 115, 0.4);
+            transition: 0.2s;
+            outline: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        #start-btn:hover {
+            transform: scale(1.05);
+            background: #218838;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="game-container">
+        <div class="ui-layer">
+            <div class="score-box">Mesafe: <span id="score">0m</span></div>
+            <div class="score-box">En İyi: <span id="highscore">0m</span></div>
+        </div>
+
+        <canvas id="gameCanvas"></canvas>
+
+        <div id="game-over-screen">
+            <h1 id="title-text">THE PETS: FLUFFY FALL</h1>
+            <p id="info-text" class="final-score">Engellerden kaçmak için parmağını ekranda sürükle!</p>
+            
+            <div class="character-selection">
+                <h3>Karakter Seç</h3>
+                <div class="char-grid">
+                    <div class="char-card selected" onclick="selectCharacter('gus')">
+                        <div class="char-preview-box"><img id="prev-gus" src="mini.gus.jpg" onerror="handlePreviewError(this, 'Mini.Gus.jpg')"></div>
+                        <div class="char-name">Gus</div>
+                    </div>
+                    <div class="char-card" onclick="selectCharacter('squeak')">
+                        <div class="char-preview-box"><img id="prev-squeak" src="mini.squeak.jpg" onerror="handlePreviewError(this, 'Mini.Squeak.jpg')"></div>
+                        <div class="char-name">Squeak</div>
+                    </div>
+                    <div class="char-card" onclick="selectCharacter('flip')">
+                        <div class="char-preview-box"><img id="prev-flip" src="mini.flip.jpg" onerror="handlePreviewError(this, 'Mini.Flip.jpg')"></div>
+                        <div class="char-name">Flip</div>
+                    </div>
+                    <div class="char-card" onclick="selectCharacter('yeyet')">
+                        <div class="char-preview-box"><img id="prev-yeyet" src="mini.yeyet.png" onerror="handlePreviewError(this, 'Mini.Yeyet.png')"></div>
+                        <div class="char-name">Yeyet</div>
+                    </div>
+                    <div class="char-card" onclick="selectCharacter('sugar')">
+                        <div class="char-preview-box"><img id="prev-sugar" src="mini.sugar.jpg" onerror="handlePreviewError(this, 'Mini.Sugar.jpg')"></div>
+                        <div class="char-name">Sugar</div>
+                    </div>
+                    <div class="char-card" onclick="selectCharacter('dot')">
+                        <div class="char-preview-box"><img id="prev-dot" src="mini.dot.jpg" onerror="handlePreviewError(this, 'Mini.Dot.jpg')"></div>
+                        <div class="char-name">Dot</div>
+                    </div>
+                </div>
+            </div>
+
+            <button id="start-btn" onclick="startGame()">OYNA 🚀</button>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const scoreEl = document.getElementById('score');
+        const highscoreEl = document.getElementById('highscore');
+        const gameOverScreen = document.getElementById('game-over-screen');
+        const titleText = document.getElementById('title-text');
+        const infoText = document.getElementById('info-text');
+
+        function resizeCanvas() {
+            canvas.width = canvas.getBoundingClientRect().width;
+            canvas.height = canvas.getBoundingClientRect().height;
+        }
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+
+        let gameActive = false;
+        let score = 0;
+        let highscore = localStorage.getItem('petsFallHighScore') || 0;
+        highscoreEl.innerText = highscore + "m";
+
+        let gameSpeed = 4;
+        let obstacles = [];
+        let particles = [];
+        let obstacleTimer = 0;
+
+        let currentSelectedPet = 'gus'; 
+        let imgLoaded = false;
+        const petImg = new Image();
+
+        petImg.onload = function() {
+            imgLoaded = true;
+        };
+
+        petImg.onerror = function() {
+            let currentSrc = petImg.src.toLowerCase();
+            // Yeyet için .png büyük harf kontrolü, diğerleri için .jpg büyük harf kontrolü
+            if (currentSelectedPet === 'yeyet') {
+                if (currentSrc.includes('mini.yeyet.png')) {
+                    petImg.src = 'Mini.Yeyet.png';
+                }
+            } else {
+                if (currentSrc.includes('mini.' + currentSelectedPet + '.jpg')) {
+                    let formattedName = currentSelectedPet.charAt(0).toUpperCase() + currentSelectedPet.slice(1);
+                    petImg.src = 'Mini.' + formattedName + '.jpg';
+                }
+            }
+        };
+
+        function handlePreviewError(imgElement, backupSrc) {
+            if (imgElement.src.indexOf(backupSrc) === -1) {
+                imgElement.src = backupSrc;
+            }
+        }
+
+        // Akıllı Karakter Seçim Motoru (Uzantı Seçici)
+        function selectCharacter(petName) {
+            currentSelectedPet = petName;
+            imgLoaded = false;
+            
+            const cards = document.querySelectorAll('.char-card');
+            cards.forEach(card => card.classList.remove('selected'));
+            
+            const indexMap = { 'gus':0, 'squeak':1, 'flip':2, 'yeyet':3, 'sugar':4, 'dot':5 };
+            cards[indexMap[petName]].classList.add('selected');
+
+            // Eğer seçilen yeyet ise uzantıyı .png yap, diğerleri .jpg kalmaya devam etsin
+            let fileExt = (petName === 'yeyet') ? '.png' : '.jpg';
+            petImg.src = 'mini.' + petName + fileExt + '?v=' + Date.now();
+        }
+
+        // Oyunu Gus ile başlat
+        selectCharacter('gus');
+
+        const player = {
+            x: 200,
+            y: 200,
+            radius: 28,
+            targetX: 200,
+            targetY: 200
+        };
+
+        function getMousePos(e) {
+            const rect = canvas.getBoundingClientRect();
+            player.targetX = e.clientX - rect.left;
+            player.targetY = e.clientY - rect.top;
+        }
+
+        function getTouchPos(e) {
+            const rect = canvas.getBoundingClientRect();
+            if (e.touches.length > 0) {
+                player.targetX = e.touches[0].clientX - rect.left;
+                player.targetY = e.touches[0].clientY - rect.top;
+            }
+        }
+
+        window.addEventListener('mousemove', (e) => { if (gameActive) getMousePos(e); });
+        window.addEventListener('touchmove', (e) => { 
+            if (gameActive) {
+                e.preventDefault();
+                getTouchPos(e);
+            }
+        }, { passive: false });
+
+        function startGame() {
+            resizeCanvas(); 
+            gameOverScreen.style.display = 'none'; 
+            gameActive = true;
+            score = 0;
+            gameSpeed = 4;
+            obstacles = [];
+            obstacleTimer = 0;
+            
+            player.x = canvas.width / 2;
+            player.y = canvas.height * 0.3;
+            player.targetX = canvas.width / 2;
+            player.targetY = canvas.height * 0.3;
+            
+            particles = [];
+            for(let i=0; i<25; i++) {
+                particles.push({
+                    x: Math.random() * canvas.width,
+                    y: Math.random() * canvas.height,
+                    speed: Math.random() * 2 + 1,
+                    radius: Math.random() * 1.5 + 0.5
+                });
+            }
+            
+            animate();
+        }
+
+        function spawnObstacle() {
+            obstacleTimer++;
+            let spawnRate = Math.max(45, 95 - Math.floor(score / 8)); 
+            
+            if (obstacleTimer > spawnRate) {
+                obstacleTimer = 0;
+                let type = Math.floor(Math.random() * 3);
+                let gapWidth = Math.max(100, 150 - Math.floor(score / 12));
+                let obstacleY = canvas.height + 50;
+
+                if (type === 0) {
+                    let gapX = Math.random() * (canvas.width - gapWidth - 60) + 30;
+                    obstacles.push({ type: 'gate', y: obstacleY, gapX: gapX, gapW: gapWidth, height: 40 });
+                } else if (type === 1) {
+                    obstacles.push({ 
+                        type: 'moving_cube', 
+                        x: Math.random() * (canvas.width - 70), 
+                        y: obstacleY, 
+                        w: 70, 
+                        h: 70, 
+                        dir: Math.random() > 0.5 ? 1 : -1, 
+                        speed: Math.random() * 1.5 + 1.5 + (score/30)
+                    });
+                } else {
+                    let blockWidth = Math.random() * 60 + 100;
+                    obstacles.push({ type: 'center_block', x: (canvas.width / 2) - (blockWidth / 2), y: obstacleY, w: blockWidth, h: 40 });
+                }
+            }
+        }
+
+        function draw3DBlock(x, y, w, h, baseColor, lightColor) {
+            ctx.fillStyle = baseColor;
+            ctx.fillRect(x, y, w, h);
+            ctx.fillStyle = lightColor;
+            ctx.fillRect(x, y, w, 6); 
+            ctx.fillRect(x, y, 6, h); 
+            ctx.strokeStyle = "rgba(0,0,0,0.3)";
+            ctx.lineWidth = 2;
+            ctx.strokeRect(x, y, w, h);
+        }
+
+        function animate() {
+            if (!gameActive) return;
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            score += 0.08;
+            let currentScore = Math.floor(score);
+            scoreEl.innerText = currentScore + "m";
+            gameSpeed = 4.5 + (score / 30);
+
+            ctx.fillStyle = "rgba(0, 210, 211, 0.25)";
+            particles.forEach(p => {
+                p.y -= gameSpeed * p.speed;
+                if (p.y < 0) {
+                    p.y = canvas.height;
+                    p.x = Math.random() * canvas.width;
+                }
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                ctx.fill();
+            });
+
+            player.x += (player.targetX - player.x) * 0.16;
+            player.y += (player.targetY - player.y) * 0.16;
+
+            player.x = Math.max(player.radius, Math.min(player.x, canvas.width - player.radius));
+            player.y = Math.max(player.radius, Math.min(player.y, canvas.height - player.radius));
+
+            ctx.save();
+            ctx.beginPath();
+            ctx.arc(player.x, player.y, player.radius, 0, Math.PI * 2);
+            ctx.clip();
+            
+            if (imgLoaded) {
+                ctx.drawImage(petImg, player.x - player.radius, player.y - player.radius, player.radius * 2, player.radius * 2);
+            } else {
+                ctx.fillStyle = "#ffa502";
+                ctx.fill();
+            }
+            ctx.restore();
+            
+            ctx.strokeStyle = "#ffea00";
+            ctx.lineWidth = 3;
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = "#ffea00";
+            ctx.beginPath();
+            ctx.arc(player.x, player.y, player.radius, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.shadowBlur = 0; 
+
+            spawnObstacle();
+
+            const baseRed = "#b32e3a";
+            const lightRed = "#ff4d5a";
+
+            for (let i = obstacles.length - 1; i >= 0; i--) {
+                let obs = obstacles[i];
+                obs.y -= gameSpeed;
+
+                if (obs.type === 'gate') {
+                    draw3DBlock(0, obs.y, obs.gapX, obs.height, baseRed, lightRed);
+                    draw3DBlock(obs.gapX + obs.gapW, obs.y, canvas.width - (obs.gapX + obs.gapW), obs.height, baseRed, lightRed);
+
+                    if (player.y + player.radius > obs.y && player.y - player.radius < obs.y + obs.height) {
+                        if (player.x - player.radius < obs.gapX || player.x + player.radius > obs.gapX + obs.gapW) {
+                            gameOver();
+                        }
+                    }
+                } 
+                else if (obs.type === 'moving_cube') {
+                    obs.x += obs.speed * obs.dir;
+                    if (obs.x <= 0 || obs.x + obs.w >= canvas.width) obs.dir *= -1;
+                    
+                    draw3DBlock(obs.x, obs.y, obs.w, obs.h, "#a020f0", "#d87093");
+
+                    let closestX = Math.max(obs.x, Math.min(player.x, obs.x + obs.w));
+                    let closestY = Math.max(obs.y, Math.min(player.y, obs.y + obs.h));
+                    if (Math.hypot(player.x - closestX, player.y - closestY) < player.radius - 2) {
+                        gameOver();
+                    }
+                } 
+                else if (obs.type === 'center_block') {
+                    draw3DBlock(obs.x, obs.y, obs.w, obs.h, baseRed, lightRed);
+
+                    let closestX = Math.max(obs.x, Math.min(player.x, obs.x + obs.w));
+                    let closestY = Math.max(obs.y, Math.min(player.y, obs.y + obs.h));
+                    if (Math.hypot(player.x - closestX, player.y - closestY) < player.radius - 2) {
+                        gameOver();
+                    }
+                }
+
+                if (obs.y < -100) obstacles.splice(i, 1);
+            }
+
+            requestAnimationFrame(animate);
+        }
+
+        function gameOver() {
+            gameActive = false;
+            let finalScore = Math.floor(score);
+            if (finalScore > highscore) {
+                highscore = finalScore;
+                localStorage.setItem('petsFallHighScore', highscore);
+                highscoreEl.innerText = highscore + "m";
+            }
+
+            titleText.innerText = "OYUN BİTTİ!";
+            infoText.innerText = `Skorun: ${finalScore}m\nEn İyi Skor: ${highscore}m`;
+            document.getElementById('start-btn').innerText = "YENİDEN DENE 🔄";
+            gameOverScreen.style.display = 'flex';
+        }
+    </script>
+</body>
+</html>
