@@ -2,529 +2,567 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>The Pets: Fall</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0">
+    <title>The Pets: Bumper Arena .IO</title>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
     <style>
         body {
             margin: 0;
             padding: 0;
-            background: #090d16;
-            color: #fff;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #b3e5fc; /* Bebek Mavisi Arka Plan */
             overflow: hidden;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             user-select: none;
             -webkit-user-select: none;
-            -webkit-tap-highlight-color: transparent;
+            touch-action: none;
         }
 
-        #game-container {
-            position: relative;
-            width: 100%;
-            max-width: 450px;
-            height: 100vh;
-            box-shadow: 0 0 30px rgba(0, 0, 0, 0.8);
-            background: #0d1117;
-            overflow: hidden;
-        }
-
-        canvas {
+        #game-canvas {
             display: block;
-            width: 100%;
-            height: 100%;
-            background: radial-gradient(circle, #1a1f29 0%, #090d16 100%);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            margin: 0 auto;
         }
 
-        .ui-layer {
-            position: absolute;
-            top: 20px;
-            left: 20px;
-            right: 20px;
+        /* Kullanıcı Arayüzü */
+        .ui-container {
+            position: fixed;
+            top: 15px;
+            left: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        .stat-box {
+            background: rgba(20, 27, 45, 0.85);
+            color: #ffffff;
+            padding: 8px 15px;
+            border-radius: 12px;
+            font-weight: 900;
+            font-size: 13px;
+            border: 2px solid #0288d1;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        /* Liderlik Tablosu */
+        .leaderboard {
+            position: fixed;
+            top: 15px;
+            right: 15px;
+            background: rgba(20, 27, 45, 0.85);
+            color: white;
+            border-radius: 15px;
+            padding: 12px;
+            width: 190px;
+            border: 2px solid #0288d1;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            font-size: 12px;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        .leaderboard h3 {
+            margin: 0 0 8px 0;
+            text-align: center;
+            color: #b3e5fc;
+            text-transform: uppercase;
+            font-size: 12px;
+            letter-spacing: 1px;
+            border-bottom: 1px dashed #0288d1;
+            padding-bottom: 4px;
+        }
+
+        .leaderboard-item {
             display: flex;
             justify-content: space-between;
+            margin: 4px 0;
+            font-weight: bold;
+        }
+
+        /* Emoji Gönderme Çubuğu */
+        .emoji-bar {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 8px;
+            background: rgba(20, 27, 45, 0.85);
+            padding: 8px 12px;
+            border-radius: 20px;
+            border: 2px solid #0288d1;
+            z-index: 10;
+        }
+
+        .emoji-btn {
+            font-size: 20px;
+            background: #0288d1;
+            border: none;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.1s;
+            box-shadow: 0 3px 0 #01579b;
+        }
+
+        .emoji-btn:active {
+            transform: scale(0.9) translateY(3px);
+            box-shadow: none;
+        }
+
+        #instructions {
+            position: fixed;
+            top: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(1, 87, 155, 0.9);
+            color: white;
+            padding: 8px 20px;
+            border-radius: 30px;
+            font-weight: bold;
+            font-size: 12px;
+            text-align: center;
             pointer-events: none;
             z-index: 5;
         }
 
-        .score-box {
-            background: rgba(13, 17, 23, 0.85);
-            padding: 10px 20px;
-            border-radius: 12px;
-            border: 2px solid #30363d;
-            font-size: 16px;
-            font-weight: bold;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
-        }
-
-        #score { color: #ffb300; }
-        #highscore { color: #00d2d3; }
-
-        #game-over-screen {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(9, 13, 22, 0.95);
-            display: flex; 
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            z-index: 20;
-            padding: 20px;
-            box-sizing: border-box;
-        }
-
-        #game-over-screen h1 {
-            color: #ffea00;
-            font-size: 28px;
-            margin-bottom: 5px;
-            text-shadow: 0 0 20px rgba(255, 234, 0, 0.4);
-            font-weight: bold;
-            text-align: center;
-        }
-
-        .final-score {
-            font-size: 15px;
-            margin-bottom: 15px;
-            color: #8b949e;
-            text-align: center;
-            line-height: 1.4;
-            white-space: pre-line;
-        }
-
-        .character-selection {
-            width: 90%;
-            background: rgba(21, 28, 41, 0.8);
-            border: 2px solid #30363d;
-            border-radius: 16px;
-            padding: 15px;
-            margin-bottom: 25px;
-            box-sizing: border-box;
-        }
-
-        .character-selection h3 {
-            margin: 0 0 12px 0;
-            color: #00d2d3;
-            font-size: 16px;
-            text-align: center;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-
-        .char-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 10px;
-        }
-
-        .char-card {
-            background: #161b22;
-            border: 2px solid #30363d;
-            border-radius: 12px;
-            padding: 8px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            cursor: pointer;
-            transition: 0.2s;
-        }
-
-        .char-card:hover {
-            transform: scale(1.05);
-        }
-
-        .char-card.selected {
-            border-color: #ffea00;
-            background: rgba(255, 234, 0, 0.1);
-            box-shadow: 0 0 10px rgba(255, 234, 0, 0.2);
-        }
-
-        .char-preview-box {
-            width: 45px;
-            height: 45px;
-            border-radius: 50%;
-            background: #ffa502;
-            border: 2px solid #ffea00;
-            overflow: hidden;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            margin-bottom: 5px;
-        }
-
-        .char-preview-box img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
-
-        .char-name {
-            font-size: 11px;
-            font-weight: bold;
-            color: #c9d1d9;
-            text-align: center;
-        }
-
-        .char-card.selected .char-name {
-            color: #ffea00;
-        }
-
-        #start-btn {
-            background: #2ed573;
-            border: none;
+        /* Ses Açma/Kapatma Butonu */
+        .audio-control {
+            background: #0288d1;
             color: white;
-            padding: 14px 50px;
-            font-size: 18px;
-            font-weight: bold;
-            border-radius: 30px;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 8px;
             cursor: pointer;
-            box-shadow: 0 5px 15px rgba(46, 213, 115, 0.4);
-            transition: 0.2s;
-            outline: none;
-            -webkit-tap-highlight-color: transparent;
-        }
-
-        #start-btn:hover {
-            transform: scale(1.05);
-            background: #218838;
+            font-weight: bold;
+            font-size: 11px;
+            pointer-events: auto;
+            box-shadow: 0 2px 0 #01579b;
         }
     </style>
 </head>
 <body>
 
-    <div id="game-container">
-        <div class="ui-layer">
-            <div class="score-box">Mesafe: <span id="score">0m</span></div>
-            <div class="score-box">En İyi: <span id="highscore">0m</span></div>
-        </div>
-
-        <canvas id="gameCanvas"></canvas>
-
-        <div id="game-over-screen">
-            <h1 id="title-text">THE PETS: FLUFFY FALL</h1>
-            <p id="info-text" class="final-score">Engellerden kaçmak için parmağını ekranda sürükle!</p>
-            
-            <div class="character-selection">
-                <h3>Karakter Seç</h3>
-                <div class="char-grid">
-                    <div class="char-card selected" onclick="selectCharacter('gus')">
-                        <div class="char-preview-box"><img id="prev-gus" src="mini.gus.jpg" onerror="handlePreviewError(this, 'Mini.Gus.jpg')"></div>
-                        <div class="char-name">Gus</div>
-                    </div>
-                    <div class="char-card" onclick="selectCharacter('squeak')">
-                        <div class="char-preview-box"><img id="prev-squeak" src="mini.squeak.jpg" onerror="handlePreviewError(this, 'Mini.Squeak.jpg')"></div>
-                        <div class="char-name">Squeak</div>
-                    </div>
-                    <div class="char-card" onclick="selectCharacter('flip')">
-                        <div class="char-preview-box"><img id="prev-flip" src="mini.flip.jpg" onerror="handlePreviewError(this, 'Mini.Flip.jpg')"></div>
-                        <div class="char-name">Flip</div>
-                    </div>
-                    <div class="char-card" onclick="selectCharacter('yeyet')">
-                        <div class="char-preview-box"><img id="prev-yeyet" src="mini.yeyet.png" onerror="handlePreviewError(this, 'Mini.Yeyet.png')"></div>
-                        <div class="char-name">Yeyet</div>
-                    </div>
-                    <div class="char-card" onclick="selectCharacter('sugar')">
-                        <div class="char-preview-box"><img id="prev-sugar" src="mini.sugar.jpg" onerror="handlePreviewError(this, 'Mini.Sugar.jpg')"></div>
-                        <div class="char-name">Sugar</div>
-                    </div>
-                    <div class="char-card" onclick="selectCharacter('dot')">
-                        <div class="char-preview-box"><img id="prev-dot" src="mini.dot.jpg" onerror="handlePreviewError(this, 'Mini.Dot.jpg')"></div>
-                        <div class="char-name">Dot</div>
-                    </div>
-                </div>
-            </div>
-
-            <button id="start-btn" onclick="startGame()">OYNA 🚀</button>
+    <div class="ui-container">
+        <div class="stat-box">🆔 Pet: <span id="player-pet-name">...</span> (<span id="player-id">...</span>)</div>
+        <div class="stat-box">⚖️ Kütle: <span id="player-score">100</span></div>
+        <div class="stat-box">⚡ Dash (Ekrana Tıkla!)</div>
+        <div class="stat-box" style="border:none; background:transparent; padding:0; box-shadow:none;">
+            <button class="audio-control" id="mute-btn" onclick="toggleMute()">🔊 Müzik Açık</button>
         </div>
     </div>
 
+    <div class="leaderboard">
+        <h3>🏆 En Büyük Petler</h3>
+        <div id="lb-list"></div>
+    </div>
+
+    <div id="instructions">
+        🎵 Müziği başlatmak için ekrana bir kez dokun/tıkla! <br>🚀 Hızlanıp rakipleri uçurmak için TIKLAMAYA devam et!
+    </div>
+
+    <div class="emoji-bar">
+        <button class="emoji-btn" onclick="sendEmoji('😡')">😡</button>
+        <button class="emoji-btn" onclick="sendEmoji('🤪')">🤪</button>
+        <button class="emoji-btn" onclick="sendEmoji('😎')">😎</button>
+        <button class="emoji-btn" onclick="sendEmoji('👑')">👑</button>
+        <button class="emoji-btn" onclick="sendEmoji('💥')">💥</button>
+    </div>
+
+    <canvas id="game-canvas"></canvas>
+
     <script>
-        const canvas = document.getElementById('gameCanvas');
+        // FIREBASE BAĞLANTISI
+        const firebaseConfig = { databaseURL: "https://tomoyunu-5cd2f-default-rtdb.europe-west1.firebasedatabase.app/" };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        const canvas = document.getElementById('game-canvas');
         const ctx = canvas.getContext('2d');
-        const scoreEl = document.getElementById('score');
-        const highscoreEl = document.getElementById('highscore');
-        const gameOverScreen = document.getElementById('game-over-screen');
-        const titleText = document.getElementById('title-text');
-        const infoText = document.getElementById('info-text');
 
         function resizeCanvas() {
-            canvas.width = canvas.getBoundingClientRect().width;
-            canvas.height = canvas.getBoundingClientRect().height;
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
         }
-        resizeCanvas();
         window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
 
-        let gameActive = false;
-        let score = 0;
-        let highscore = localStorage.getItem('petsFallHighScore') || 0;
-        highscoreEl.innerText = highscore + "m";
+        // MÜZİK AYARLARI
+        const bgMusic = new Audio('background.mp3');
+        bgMusic.loop = true;
+        bgMusic.volume = 0.4; // %40 ses yüksekliği (rahatsız etmemesi için)
+        let isMuted = false;
+        let musicStarted = false;
 
-        let gameSpeed = 4;
-        let obstacles = [];
-        let particles = [];
-        let obstacleTimer = 0;
+        // Tarayıcıların "ilk tıklamadan önce ses çalmama" kuralı için etkileşim kontrolü
+        function startMusic() {
+            if (!musicStarted && !isMuted) {
+                bgMusic.play().then(() => {
+                    musicStarted = true;
+                    document.getElementById('instructions').style.display = 'none'; // İlk tıklamada talimatı gizle
+                }).catch(err => console.log("Ses başlatılamadı, etkileşim bekleniyor..."));
+            }
+        }
 
-        let currentSelectedPet = 'gus'; 
-        let imgLoaded = false;
-        const petImg = new Image();
-
-        petImg.onload = function() {
-            imgLoaded = true;
-        };
-
-        petImg.onerror = function() {
-            let currentSrc = petImg.src.toLowerCase();
-            // Yeyet için .png büyük harf kontrolü, diğerleri için .jpg büyük harf kontrolü
-            if (currentSelectedPet === 'yeyet') {
-                if (currentSrc.includes('mini.yeyet.png')) {
-                    petImg.src = 'Mini.Yeyet.png';
-                }
+        function toggleMute() {
+            isMuted = !isMuted;
+            const btn = document.getElementById('mute-btn');
+            if (isMuted) {
+                bgMusic.pause();
+                btn.innerText = "🔇 Müzik Kapalı";
+                btn.style.background = "#d63031";
             } else {
-                if (currentSrc.includes('mini.' + currentSelectedPet + '.jpg')) {
-                    let formattedName = currentSelectedPet.charAt(0).toUpperCase() + currentSelectedPet.slice(1);
-                    petImg.src = 'Mini.' + formattedName + '.jpg';
-                }
+                bgMusic.play();
+                btn.innerText = "🔊 Müzik Açık";
+                btn.style.background = "#0288d1";
+                musicStarted = true;
             }
+        }
+
+        // Karakter listesi ve .webp uzantıları
+        const petPool = ['yeyet', 'blook', 'moosey', 'blinky', 'dot', 'sugar', 'gus', 'flip', 'squeak'];
+        
+        // Görselleri Ön Belleğe Yükleme (Preload)
+        const images = {};
+        petPool.forEach(pet => {
+            images[pet] = new Image();
+            images[pet].src = pet + '.webp';
+        });
+        
+        // Yiyecek görselini seker.webp olarak tanımlıyoruz
+        images['food'] = new Image();
+        images['food'].src = 'seker.webp';
+
+        // Kimlik ve Rastgele Pet Seçimi
+        let myId = localStorage.getItem('bumper_io_id');
+        if(!myId) {
+            myId = 'P-' + Math.floor(Math.random() * 900 + 100);
+            localStorage.setItem('bumper_io_id', myId);
+        }
+        
+        let myPet = localStorage.getItem('bumper_io_pet');
+        if(!myPet || !petPool.includes(myPet)) {
+            myPet = petPool[Math.floor(Math.random() * petPool.length)];
+            localStorage.setItem('bumper_io_pet', myPet);
+        }
+
+        document.getElementById('player-id').innerText = myId;
+        document.getElementById('player-pet-name').innerText = myPet.toUpperCase();
+
+        const arena = {
+            x: window.innerWidth / 2,
+            y: window.innerHeight / 2,
+            radius: Math.min(window.innerWidth, window.innerHeight) * 0.42
         };
 
-        function handlePreviewError(imgElement, backupSrc) {
-            if (imgElement.src.indexOf(backupSrc) === -1) {
-                imgElement.src = backupSrc;
-            }
-        }
-
-        // Akıllı Karakter Seçim Motoru (Uzantı Seçici)
-        function selectCharacter(petName) {
-            currentSelectedPet = petName;
-            imgLoaded = false;
-            
-            const cards = document.querySelectorAll('.char-card');
-            cards.forEach(card => card.classList.remove('selected'));
-            
-            const indexMap = { 'gus':0, 'squeak':1, 'flip':2, 'yeyet':3, 'sugar':4, 'dot':5 };
-            cards[indexMap[petName]].classList.add('selected');
-
-            // Eğer seçilen yeyet ise uzantıyı .png yap, diğerleri .jpg kalmaya devam etsin
-            let fileExt = (petName === 'yeyet') ? '.png' : '.jpg';
-            petImg.src = 'mini.' + petName + fileExt + '?v=' + Date.now();
-        }
-
-        // Oyunu Gus ile başlat
-        selectCharacter('gus');
-
-        const player = {
-            x: 200,
-            y: 200,
-            radius: 28,
-            targetX: 200,
-            targetY: 200
+        // Yerel Oyuncu Bilgisi
+        let localPlayer = {
+            id: myId,
+            pet: myPet,
+            x: arena.x + (Math.random() * 60 - 30),
+            y: arena.y + (Math.random() * 60 - 30),
+            vx: 0,
+            vy: 0,
+            mass: 100,
+            radius: 20,
+            emoji: "",
+            emojiTimer: 0,
+            isDead: false
         };
 
-        function getMousePos(e) {
-            const rect = canvas.getBoundingClientRect();
-            player.targetX = e.clientX - rect.left;
-            player.targetY = e.clientY - rect.top;
-        }
+        let remotePlayers = {};
+        let foods = {};
+        let mouse = { x: arena.x, y: arena.y };
 
-        function getTouchPos(e) {
-            const rect = canvas.getBoundingClientRect();
-            if (e.touches.length > 0) {
-                player.targetX = e.touches[0].clientX - rect.left;
-                player.targetY = e.touches[0].clientY - rect.top;
+        // Kontroller
+        window.addEventListener('mousemove', (e) => { mouse.x = e.clientX; mouse.y = e.clientY; });
+        window.addEventListener('touchmove', (e) => {
+            if(e.touches.length > 0) { mouse.x = e.touches[0].clientX; mouse.y = e.touches[0].clientY; }
+        });
+
+        window.addEventListener('mousedown', triggerDash);
+        window.addEventListener('touchstart', triggerDash);
+
+        function triggerDash(e) {
+            startMusic(); // Oyuncu ekrana ilk tıkladığında müzik otomatik başlar
+            
+            if(e.target.tagName === 'BUTTON' || e.target.classList.contains('emoji-btn') || e.target.classList.contains('audio-control')) return;
+            if(localPlayer.isDead || localPlayer.mass < 40) return;
+
+            localPlayer.mass -= 12; 
+            let dx = mouse.x - localPlayer.x;
+            let dy = mouse.y - localPlayer.y;
+            let dist = Math.sqrt(dx*dx + dy*dy);
+            
+            if(dist > 5) {
+                localPlayer.vx += (dx / dist) * 13;
+                localPlayer.vy += (dy / dist) * 13;
             }
         }
 
-        window.addEventListener('mousemove', (e) => { if (gameActive) getMousePos(e); });
-        window.addEventListener('touchmove', (e) => { 
-            if (gameActive) {
-                e.preventDefault();
-                getTouchPos(e);
-            }
-        }, { passive: false });
+        function sendEmoji(emojiStr) {
+            if(localPlayer.isDead) return;
+            localPlayer.emoji = emojiStr;
+            localPlayer.emojiTimer = Date.now() + 2500;
+            syncToFirebase();
+        }
 
-        function startGame() {
-            resizeCanvas(); 
-            gameOverScreen.style.display = 'none'; 
-            gameActive = true;
-            score = 0;
-            gameSpeed = 4;
-            obstacles = [];
-            obstacleTimer = 0;
-            
-            player.x = canvas.width / 2;
-            player.y = canvas.height * 0.3;
-            player.targetX = canvas.width / 2;
-            player.targetY = canvas.height * 0.3;
-            
-            particles = [];
-            for(let i=0; i<25; i++) {
-                particles.push({
-                    x: Math.random() * canvas.width,
-                    y: Math.random() * canvas.height,
-                    speed: Math.random() * 2 + 1,
-                    radius: Math.random() * 1.5 + 0.5
+        // --- NETWORK (FIREBASE) ---
+        function syncToFirebase() {
+            if(localPlayer.isDead) return;
+            db.ref('arena_players/' + myId).set({
+                id: localPlayer.id,
+                pet: localPlayer.pet,
+                x: localPlayer.x,
+                y: localPlayer.y,
+                mass: localPlayer.mass,
+                emoji: Date.now() < localPlayer.emojiTimer ? localPlayer.emoji : "",
+                lastSeen: Date.now()
+            });
+        }
+        db.ref('arena_players/' + myId).onDisconnect().remove();
+
+        db.ref('arena_players').on('value', (snap) => {
+            const data = snap.val();
+            if(!data) { remotePlayers = {}; return; }
+            remotePlayers = data;
+        });
+
+        db.ref('arena_foods').on('value', (snap) => {
+            const data = snap.val();
+            if(data) foods = data;
+        });
+
+        // Şeker yönetimi ve zaman aşımı temizliği
+        setInterval(() => {
+            if(localPlayer.isDead) return;
+            if(Object.keys(foods).length < 25 && Math.random() < 0.4) {
+                let foodId = 'F-' + Math.floor(Math.random() * 1000000);
+                let angle = Math.random() * Math.PI * 2;
+                let r = Math.random() * (arena.radius - 15);
+                db.ref('arena_foods/' + foodId).set({
+                    id: foodId,
+                    x: arena.x + Math.cos(angle) * r,
+                    y: arena.y + Math.sin(angle) * r
                 });
             }
-            
-            animate();
-        }
-
-        function spawnObstacle() {
-            obstacleTimer++;
-            let spawnRate = Math.max(45, 95 - Math.floor(score / 8)); 
-            
-            if (obstacleTimer > spawnRate) {
-                obstacleTimer = 0;
-                let type = Math.floor(Math.random() * 3);
-                let gapWidth = Math.max(100, 150 - Math.floor(score / 12));
-                let obstacleY = canvas.height + 50;
-
-                if (type === 0) {
-                    let gapX = Math.random() * (canvas.width - gapWidth - 60) + 30;
-                    obstacles.push({ type: 'gate', y: obstacleY, gapX: gapX, gapW: gapWidth, height: 40 });
-                } else if (type === 1) {
-                    obstacles.push({ 
-                        type: 'moving_cube', 
-                        x: Math.random() * (canvas.width - 70), 
-                        y: obstacleY, 
-                        w: 70, 
-                        h: 70, 
-                        dir: Math.random() > 0.5 ? 1 : -1, 
-                        speed: Math.random() * 1.5 + 1.5 + (score/30)
-                    });
-                } else {
-                    let blockWidth = Math.random() * 60 + 100;
-                    obstacles.push({ type: 'center_block', x: (canvas.width / 2) - (blockWidth / 2), y: obstacleY, w: blockWidth, h: 40 });
+            for(let id in remotePlayers) {
+                if(Date.now() - remotePlayers[id].lastSeen > 8000) {
+                    db.ref('arena_players/' + id).remove();
                 }
             }
+        }, 1000);
+
+        // --- FİZİK MOTORU ---
+        function updatePhysics() {
+            if(localPlayer.isDead) return;
+
+            localPlayer.radius = Math.sqrt(localPlayer.mass) * 2.5;
+            document.getElementById('player-score').innerText = Math.floor(localPlayer.mass);
+
+            let dx = mouse.x - localPlayer.x;
+            let dy = mouse.y - localPlayer.y;
+            let dist = Math.sqrt(dx*dx + dy*dy);
+
+            if(dist > 10) {
+                localPlayer.vx += (dx / dist) * 0.28;
+                localPlayer.vy += (dy / dist) * 0.28;
+            }
+
+            localPlayer.vx *= 0.93;
+            localPlayer.vy *= 0.93;
+            localPlayer.x += localPlayer.vx;
+            localPlayer.y += localPlayer.vy;
+
+            // Şeker (Yem) Toplama
+            for(let fId in foods) {
+                let f = foods[fId];
+                let fDist = Math.sqrt((f.x - localPlayer.x)**2 + (f.y - localPlayer.y)**2);
+                if(fDist < localPlayer.radius) {
+                    db.ref('arena_foods/' + fId).remove();
+                    localPlayer.mass += 5;
+                }
+            }
+
+            // Sumo İtme / Çarpışma Fiziği
+            for(let rId in remotePlayers) {
+                if(rId === myId) continue;
+                let p = remotePlayers[rId];
+                let pRadius = Math.sqrt(p.mass) * 2.5;
+
+                let cDx = p.x - localPlayer.x;
+                let cDy = p.y - localPlayer.y;
+                let cDist = Math.sqrt(cDx*cDx + cDy*cDy);
+
+                if(cDist < localPlayer.radius + pRadius) {
+                    let overlap = (localPlayer.radius + pRadius) - cDist;
+                    localPlayer.x -= (cDx / cDist) * overlap * 0.5;
+                    localPlayer.y -= (cDy / cDist) * overlap * 0.5;
+
+                    let forceFactor = 4.5;
+                    let massRatioLocal = p.mass / (localPlayer.mass + p.mass);
+
+                    localPlayer.vx -= (cDx / cDist) * forceFactor * massRatioLocal * 2.5;
+                    localPlayer.vy -= (cDy / cDist) * forceFactor * massRatioLocal * 2.5;
+                }
+            }
+
+            // Arenadan Düşme Kontrolü
+            let arenaDist = Math.sqrt((localPlayer.x - arena.x)**2 + (localPlayer.y - arena.y)**2);
+            if(arenaDist > arena.radius) {
+                localPlayer.isDead = true;
+                db.ref('arena_players/' + myId).remove();
+                alert("❌ Arenadan aşağı düştün! Yeniden doğmak için sayfayı yenile.");
+                location.reload();
+            }
+
+            syncToFirebase();
         }
 
-        function draw3DBlock(x, y, w, h, baseColor, lightColor) {
-            ctx.fillStyle = baseColor;
-            ctx.fillRect(x, y, w, h);
-            ctx.fillStyle = lightColor;
-            ctx.fillRect(x, y, w, 6); 
-            ctx.fillRect(x, y, 6, h); 
-            ctx.strokeStyle = "rgba(0,0,0,0.3)";
-            ctx.lineWidth = 2;
-            ctx.strokeRect(x, y, w, h);
-        }
-
-        function animate() {
-            if (!gameActive) return;
-
+        // --- GRAFİK ÇİZİM (RENDERING) ---
+        function renderGame() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            score += 0.08;
-            let currentScore = Math.floor(score);
-            scoreEl.innerText = currentScore + "m";
-            gameSpeed = 4.5 + (score / 30);
-
-            ctx.fillStyle = "rgba(0, 210, 211, 0.25)";
-            particles.forEach(p => {
-                p.y -= gameSpeed * p.speed;
-                if (p.y < 0) {
-                    p.y = canvas.height;
-                    p.x = Math.random() * canvas.width;
-                }
-                ctx.beginPath();
-                ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
-                ctx.fill();
-            });
-
-            player.x += (player.targetX - player.x) * 0.16;
-            player.y += (player.targetY - player.y) * 0.16;
-
-            player.x = Math.max(player.radius, Math.min(player.x, canvas.width - player.radius));
-            player.y = Math.max(player.radius, Math.min(player.y, canvas.height - player.radius));
-
-            ctx.save();
+            // Arena Çizimi (Bebek Mavisi Temalı Güvenli Bölge)
             ctx.beginPath();
-            ctx.arc(player.x, player.y, player.radius, 0, Math.PI * 2);
-            ctx.clip();
-            
-            if (imgLoaded) {
-                ctx.drawImage(petImg, player.x - player.radius, player.y - player.radius, player.radius * 2, player.radius * 2);
-            } else {
-                ctx.fillStyle = "#ffa502";
-                ctx.fill();
-            }
-            ctx.restore();
-            
-            ctx.strokeStyle = "#ffea00";
-            ctx.lineWidth = 3;
-            ctx.shadowBlur = 10;
-            ctx.shadowColor = "#ffea00";
-            ctx.beginPath();
-            ctx.arc(player.x, player.y, player.radius, 0, Math.PI * 2);
+            ctx.arc(arena.x, arena.y, arena.radius, 0, Math.PI * 2);
+            ctx.fillStyle = '#e3f2fd';
+            ctx.fill();
+            ctx.lineWidth = 8;
+            ctx.strokeStyle = '#0288d1';
             ctx.stroke();
-            ctx.shadowBlur = 0; 
+            ctx.closePath();
 
-            spawnObstacle();
+            // Şekerleri Çiz (`seker.webp`)
+            for(let fId in foods) {
+                let f = foods[fId];
+                if(images['food'].complete && images['food'].width > 0) {
+                    // Şeker görselini dengeli bir boyutta (24x24 piksel) çiziyoruz
+                    ctx.drawImage(images['food'], f.x - 12, f.y - 12, 24, 24);
+                } else {
+                    // Yedek şeker çizimi (Görsel henüz yüklenmediyse pembe daire)
+                    ctx.beginPath();
+                    ctx.arc(f.x, f.y, 7, 0, Math.PI * 2);
+                    ctx.fillStyle = '#ff7675';
+                    ctx.fill();
+                    ctx.closePath();
+                }
+            }
 
-            const baseRed = "#b32e3a";
-            const lightRed = "#ff4d5a";
+            // Diğer Oyuncuları Çiz (.webp Görselleriyle)
+            for(let rId in remotePlayers) {
+                if(rId === myId) continue;
+                let p = remotePlayers[rId];
+                let pRadius = Math.sqrt(p.mass) * 2.5;
 
-            for (let i = obstacles.length - 1; i >= 0; i--) {
-                let obs = obstacles[i];
-                obs.y -= gameSpeed;
-
-                if (obs.type === 'gate') {
-                    draw3DBlock(0, obs.y, obs.gapX, obs.height, baseRed, lightRed);
-                    draw3DBlock(obs.gapX + obs.gapW, obs.y, canvas.width - (obs.gapX + obs.gapW), obs.height, baseRed, lightRed);
-
-                    if (player.y + player.radius > obs.y && player.y - player.radius < obs.y + obs.height) {
-                        if (player.x - player.radius < obs.gapX || player.x + player.radius > obs.gapX + obs.gapW) {
-                            gameOver();
-                        }
-                    }
-                } 
-                else if (obs.type === 'moving_cube') {
-                    obs.x += obs.speed * obs.dir;
-                    if (obs.x <= 0 || obs.x + obs.w >= canvas.width) obs.dir *= -1;
-                    
-                    draw3DBlock(obs.x, obs.y, obs.w, obs.h, "#a020f0", "#d87093");
-
-                    let closestX = Math.max(obs.x, Math.min(player.x, obs.x + obs.w));
-                    let closestY = Math.max(obs.y, Math.min(player.y, obs.y + obs.h));
-                    if (Math.hypot(player.x - closestX, player.y - closestY) < player.radius - 2) {
-                        gameOver();
-                    }
-                } 
-                else if (obs.type === 'center_block') {
-                    draw3DBlock(obs.x, obs.y, obs.w, obs.h, baseRed, lightRed);
-
-                    let closestX = Math.max(obs.x, Math.min(player.x, obs.x + obs.w));
-                    let closestY = Math.max(obs.y, Math.min(player.y, obs.y + obs.h));
-                    if (Math.hypot(player.x - closestX, player.y - closestY) < player.radius - 2) {
-                        gameOver();
-                    }
+                if(images[p.pet] && images[p.pet].complete && images[p.pet].width > 0) {
+                    ctx.save();
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, pRadius, 0, Math.PI * 2);
+                    ctx.clip();
+                    ctx.drawImage(images[p.pet], p.x - pRadius, p.y - pRadius, pRadius * 2, pRadius * 2);
+                    ctx.restore();
+                } else {
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, pRadius, 0, Math.PI * 2);
+                    ctx.fillStyle = '#74b9ff';
+                    ctx.fill();
+                    ctx.closePath();
                 }
 
-                if (obs.y < -100) obstacles.splice(i, 1);
+                ctx.fillStyle = '#141b2d';
+                ctx.font = 'bold 11px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText(`${p.pet.toUpperCase()} (${p.id})`, p.x, p.y + pRadius + 14);
+
+                if(p.emoji) {
+                    ctx.font = '22px sans-serif';
+                    ctx.fillText(p.emoji, p.x, p.y - pRadius - 8);
+                }
             }
 
-            requestAnimationFrame(animate);
-        }
+            // Kendi Petimizi Çiz (.webp Görseliyle)
+            if(!localPlayer.isDead) {
+                let pRadius = localPlayer.radius;
+                
+                if(images[localPlayer.pet] && images[localPlayer.pet].complete && images[localPlayer.pet].width > 0) {
+                    ctx.save();
+                    ctx.beginPath();
+                    ctx.arc(localPlayer.x, localPlayer.y, pRadius, 0, Math.PI * 2);
+                    
+                    ctx.lineWidth = 4;
+                    ctx.strokeStyle = '#ffffff';
+                    ctx.stroke();
+                    
+                    ctx.clip();
+                    ctx.drawImage(images[localPlayer.pet], localPlayer.x - pRadius, localPlayer.y - pRadius, pRadius * 2, pRadius * 2);
+                    ctx.restore();
+                } else {
+                    ctx.beginPath();
+                    ctx.arc(localPlayer.x, localPlayer.y, pRadius, 0, Math.PI * 2);
+                    ctx.fillStyle = '#0984e3';
+                    ctx.fill();
+                    ctx.closePath();
+                }
 
-        function gameOver() {
-            gameActive = false;
-            let finalScore = Math.floor(score);
-            if (finalScore > highscore) {
-                highscore = finalScore;
-                localStorage.setItem('petsFallHighScore', highscore);
-                highscoreEl.innerText = highscore + "m";
+                ctx.fillStyle = '#01579b';
+                ctx.font = 'bold 12px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText(`SEN (${localPlayer.pet.toUpperCase()})`, localPlayer.x, localPlayer.y + pRadius + 16);
+
+                if(localPlayer.emoji && Date.now() < localPlayer.emojiTimer) {
+                    ctx.font = '24px sans-serif';
+                    ctx.fillText(localPlayer.emoji, localPlayer.x, localPlayer.y - pRadius - 8);
+                } else {
+                    localPlayer.emoji = "";
+                }
             }
 
-            titleText.innerText = "OYUN BİTTİ!";
-            infoText.innerText = `Skorun: ${finalScore}m\nEn İyi Skor: ${highscore}m`;
-            document.getElementById('start-btn').innerText = "YENİDEN DENE 🔄";
-            gameOverScreen.style.display = 'flex';
+            updateLeaderboardUI();
         }
+
+        function updateLeaderboardUI() {
+            let listArr = [];
+            if(!localPlayer.isDead) {
+                listArr.push({ name: 'SEN', mass: localPlayer.mass });
+            }
+            for(let id in remotePlayers) {
+                if(id !== myId) {
+                    listArr.push({ name: `${remotePlayers[id].pet.toUpperCase()} (${remotePlayers[id].id})`, mass: remotePlayers[id].mass });
+                }
+            }
+
+            listArr.sort((a, b) => b.mass - a.mass);
+
+            const lbList = document.getElementById('lb-list');
+            lbList.innerHTML = "";
+            listArr.slice(0, 5).forEach((p, idx) => {
+                lbList.innerHTML += `
+                    <div class="leaderboard-item">
+                        <span>${idx + 1}. ${p.name}</span>
+                        <span>${Math.floor(p.mass)}</span>
+                    </div>
+                `;
+            });
+        }
+
+        function gameLoop() {
+            updatePhysics();
+            renderGame();
+            requestAnimationFrame(gameLoop);
+        }
+
+        gameLoop();
     </script>
 </body>
 </html>
