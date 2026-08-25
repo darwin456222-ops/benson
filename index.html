@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Özel Sohbet Odası</title>
+  <title>Canlı Sohbet Odası</title>
   <style>
     :root {
       --primary-color: #075e54;
@@ -16,17 +16,6 @@
     body { background-color: var(--bg-color); display: flex; justify-content: center; align-items: center; height: 100vh; }
     
     .app-container { width: 100%; max-width: 400px; height: 90vh; background: white; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.15); overflow: hidden; display: flex; flex-direction: column; }
-    .screen { padding: 30px; display: flex; flex-direction: column; justify-content: center; height: 100%; text-align: center; }
-    .hidden { display: none !important; }
-
-    h2 { color: #333; margin-bottom: 20px; }
-    p.subtitle { color: #666; font-size: 14px; margin-bottom: 20px; }
-    
-    input[type="text"], input[type="password"] { width: 100%; padding: 12px; margin-bottom: 15px; border: 1px solid #ccc; border-radius: 8px; font-size: 16px; outline: none; }
-    button.action-btn { width: 100%; padding: 12px; background-color: var(--primary-color); color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; transition: background 0.3s; }
-    
-    .error { color: #d9534f; font-size: 14px; margin-bottom: 15px; min-height: 20px; font-weight: bold; }
-
     .chat-header { background: var(--primary-color); color: white; padding: 15px; text-align: center; font-weight: bold; font-size: 18px; }
     .chat-area { flex: 1; background-color: var(--chat-bg); padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
     
@@ -34,7 +23,7 @@
     .message.self { background-color: var(--my-msg); align-self: flex-end; border-top-right-radius: 0; }
     .message.other { background-color: var(--other-msg); align-self: flex-start; border-top-left-radius: 0; }
     
-    .msg-role { font-size: 11px; font-weight: bold; color: #555; margin-bottom: 3px; }
+    .msg-user { font-size: 11px; font-weight: bold; color: #075e54; margin-bottom: 3px; }
     .msg-time { font-size: 10px; color: #999; align-self: flex-end; margin-top: 4px; }
     
     .input-area { background: #f0f0f0; padding: 10px; display: flex; gap: 10px; }
@@ -42,119 +31,83 @@
     .send-btn { background: var(--primary-color); color: white; border: none; border-radius: 50%; width: 40px; height: 40px; cursor: pointer; font-size: 16px; }
   </style>
 
-  <!-- Firebase v8 (En stabil sürüm) -->
+  <!-- Firebase v8 SDK -->
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 </head>
 <body>
 
   <div class="app-container">
-    
-    <!-- 1. Aşama -->
-    <div id="step-1" class="screen">
-      <h2>Güvenlik Girişi</h2>
-      <p class="subtitle">Sisteme erişmek için şifreyi girin.</p>
-      <input type="password" id="code1-input" placeholder="Giriş Kodu">
-      <div id="error-1" class="error"></div>
-      <button class="action-btn" onclick="checkStep1()">İleri</button>
+    <div class="chat-header">
+      Ortak Sohbet (Kullanıcı: <span id="user-display">Yükleniyor...</span>)
     </div>
-
-    <!-- 2. Aşama -->
-    <div id="step-2" class="screen hidden">
-      <h2>Kimlik Belirleme</h2>
-      <p class="subtitle">Sohbete hangi harf ile katılacaksın?</p>
-      <input type="text" id="code2-input" placeholder="K veya Ç giriniz" maxlength="1">
-      <div id="error-2" class="error"></div>
-      <button class="action-btn" onclick="checkStep2()">Sohbete Bağlan</button>
+    <div id="chat-area" class="chat-area"></div>
+    <div class="input-area">
+      <input type="text" id="msg-input" placeholder="Bir mesaj yazın...">
+      <button class="send-btn" onclick="sendMessage()">➤</button>
     </div>
-
-    <!-- 3. Aşama -->
-    <div id="step-3" class="hidden" style="display: flex; flex-direction: column; height: 100%;">
-      <div class="chat-header">
-        Özel Sohbet Odası (<span id="user-role-display"></span>)
-      </div>
-      <div id="chat-area" class="chat-area"></div>
-      <div class="input-area">
-        <input type="text" id="msg-input" placeholder="Bir mesaj yazın...">
-        <button class="send-btn" onclick="sendMessage()">➤</button>
-      </div>
-    </div>
-
   </div>
 
   <script>
-    // Sadece senin projenin linkini kullanan ayar
     const firebaseConfig = {
       databaseURL: "https://tomoyunu-5cd2f-default-rtdb.firebaseio.com"
     };
     
-    // Firebase'i Başlat
     firebase.initializeApp(firebaseConfig);
-    const db = firebase.database().ref("ozel_oda");
+    const dbMessages = firebase.database().ref("genel_sohbet");
+    const dbCounter = firebase.database().ref("kullanici_sayaci");
 
-    const validCodesStep1 = ["Cokgüzelsin", "Yalan", "Tempo", "Üçkalp", "Kalpsizsin", "Asksakızı", "Olmazoğlan"];
-    let userRole = "";
+    let myUserName = localStorage.getItem("chat_user_name");
 
-    function checkStep1() {
-      const val = document.getElementById("code1-input").value.trim();
-      if (validCodesStep1.includes(val)) {
-        document.getElementById("step-1").classList.add("hidden");
-        document.getElementById("step-2").classList.remove("hidden");
+    // Kullanıcı adı yoksa sıradaki numarayı al ve kaydet
+    function initUser() {
+      if (!myUserName) {
+        dbCounter.transaction((currentValue) => {
+          return (currentValue || 0) + 1;
+        }, (error, committed, snapshot) => {
+          if (committed) {
+            myUserName = snapshot.val().toString();
+            localStorage.setItem("chat_user_name", myUserName);
+            document.getElementById("user-display").innerText = myUserName;
+          }
+        });
       } else {
-        document.getElementById("error-1").innerText = "Hatalı giriş kodu!";
+        document.getElementById("user-display").innerText = myUserName;
       }
-    }
-
-    function checkStep2() {
-      const val = document.getElementById("code2-input").value.trim().toUpperCase();
-      if (val === "K" || val === "Ç") {
-        userRole = val;
-        document.getElementById("user-role-display").innerText = userRole;
-        document.getElementById("step-2").classList.add("hidden");
-        document.getElementById("step-3").classList.remove("hidden");
-        startChat();
-      } else {
-        document.getElementById("error-2").innerText = "Sadece 'K' veya 'Ç' girin.";
-      }
+      
+      startChat();
     }
 
     function startChat() {
-      // LocalStorage'dan eski mesajları yükle
-      const localData = localStorage.getItem("chat_history_v2");
+      // Yerel mesaj hafızası
+      const localData = localStorage.getItem("chat_history_simple");
       if (localData) {
         renderMessages(JSON.parse(localData));
       }
 
-      // Firebase'den anlık veri dinleme
-      db.on("value", (snapshot) => {
+      // Canlı veri takibi
+      dbMessages.on("value", (snapshot) => {
         const data = snapshot.val();
         if (data) {
           const messages = Object.values(data);
-          localStorage.setItem("chat_history_v2", JSON.stringify(messages));
+          localStorage.setItem("chat_history_simple", JSON.stringify(messages));
           renderMessages(messages);
         }
-      }, (error) => {
-        console.error("Firebase Hatası: ", error);
-        alert("Bağlantı kurulamadı. Veritabanı kurallarını kontrol edin.");
       });
     }
 
     function sendMessage() {
       const input = document.getElementById("msg-input");
       const text = input.value.trim();
-      if (!text) return;
+      if (!text || !myUserName) return;
 
       const newMsg = {
-        role: userRole,
+        user: myUserName,
         text: text,
         timestamp: Date.now()
       };
 
-      // Mesajı Firebase'e yolla
-      db.push(newMsg).catch((err) => {
-        alert("Mesaj gitmedi: " + err.message);
-      });
-
+      dbMessages.push(newMsg);
       input.value = "";
       input.focus();
     }
@@ -165,27 +118,23 @@
       
       messages.forEach((msg) => {
         const msgDiv = document.createElement("div");
-        const isSelf = msg.role === userRole;
+        const isSelf = msg.user === myUserName;
         
-        // Mesaj gönderene göre class belirle
         msgDiv.className = `message ${isSelf ? 'self' : 'other'}`;
         
-        // Sadece karşı tarafın mesajında kimin attığını (K veya Ç) göster
-        const roleLabel = !isSelf ? `<div class="msg-role">${msg.role}</div>` : '';
+        const userLabel = !isSelf ? `<div class="msg-user">Kullanıcı ${msg.user}</div>` : '';
         
-        // Saati formatla
         const date = new Date(msg.timestamp);
         const timeString = date.getHours().toString().padStart(2, '0') + ':' + date.getMinutes().toString().padStart(2, '0');
 
         msgDiv.innerHTML = `
-          ${roleLabel}
+          ${userLabel}
           <div>${escapeHtml(msg.text)}</div>
           <div class="msg-time">${timeString}</div>
         `;
         chatArea.appendChild(msgDiv);
       });
       
-      // Her yeni mesajda en alta in
       chatArea.scrollTop = chatArea.scrollHeight;
     }
 
@@ -193,10 +142,12 @@
       return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
     }
 
-    // Klavyeden Enter tuşu ile gönderme
     document.getElementById("msg-input").addEventListener("keypress", (e) => {
       if (e.key === "Enter") sendMessage();
     });
+
+    // Uygulama açıldığı anda çalıştır
+    initUser();
   </script>
 </body>
 </html>
