@@ -102,13 +102,13 @@
     // Geçerli Kodlar
     const validCodesStep1 = ["Cokgüzelsin", "Yalan", "Tempo", "Üçkalp", "Kalpsizsin", "Asksakızı", "Olmazoğlan"];
     let userRole = "";
+    let allMessages = [];
 
     function checkStep1() {
       const inputEl = document.getElementById("code1-input");
       const val = inputEl.value.trim();
       const errorEl = document.getElementById("error-1");
       
-      // Şifreleri büyük/küçük harf duyarlılığından biraz kurtarmak istersen burayı geliştirebiliriz
       if (validCodesStep1.includes(val)) {
         errorEl.innerText = "";
         document.getElementById("step-1").classList.add("hidden");
@@ -138,12 +138,14 @@
 
     function initChat() {
       loadLocalMessages();
+      
+      // Firebase'den verileri dinle
       db.on("value", (snapshot) => {
         const data = snapshot.val();
         if (data) {
-          const msgArray = Object.values(data);
-          localStorage.setItem("chat_history", JSON.stringify(msgArray));
-          renderMessages(msgArray);
+          allMessages = Object.values(data);
+          localStorage.setItem("chat_history", JSON.stringify(allMessages));
+          renderMessages(allMessages);
         }
       });
     }
@@ -159,7 +161,16 @@
         timestamp: Date.now()
       };
 
-      db.push(newMsg);
+      // 1. Firebase'e gönder
+      db.push(newMsg).catch((error) => {
+        console.error("Firebase kayıt hatası: ", error);
+        alert("Mesaj gönderilemedi! Firebase kurallarını kontrol edin.");
+      });
+
+      // 2. Anında ekranda göster (Hızlı tepki vermesi için)
+      allMessages.push(newMsg);
+      renderMessages(allMessages);
+
       input.value = "";
       input.focus();
     }
@@ -177,11 +188,9 @@
       
       messages.forEach((msg) => {
         const msgDiv = document.createElement("div");
-        // Gönderen ben isem 'self', değilse 'other' class'ı ekle
         const isSelf = msg.role === userRole;
         msgDiv.className = `message ${isSelf ? 'self' : 'other'}`;
         
-        // Sadece karşı tarafın mesajlarında üstte Kimin (K/Ç) yazdığını gösterelim
         const roleLabel = !isSelf ? `<div class="msg-role">${msg.role}</div>` : '';
         
         msgDiv.innerHTML = `
@@ -192,14 +201,14 @@
         chatArea.appendChild(msgDiv);
       });
       
-      // Her yeni mesajda en alta kaydır
       chatArea.scrollTop = chatArea.scrollHeight;
     }
 
     function loadLocalMessages() {
       const localData = localStorage.getItem("chat_history");
       if (localData) {
-        renderMessages(JSON.parse(localData));
+        allMessages = JSON.parse(localData);
+        renderMessages(allMessages);
       }
     }
 
@@ -207,7 +216,6 @@
       return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
     }
 
-    // Enter tuşuna basınca mesaj gönderme
     document.getElementById("msg-input").addEventListener("keypress", (e) => {
       if (e.key === "Enter") sendMessage();
     });
