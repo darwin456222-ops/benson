@@ -3,19 +3,50 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Sohbet Uygulaması</title>
+  <title>Gizli Sohbet Odası</title>
   <style>
-    * { box-sizing: border-box; font-family: sans-serif; }
-    body { background-color: #f4f4f9; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-    .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); width: 320px; text-align: center; }
+    :root {
+      --primary-color: #007bff;
+      --bg-color: #e5ddd5;
+      --chat-bg: #ece5dd;
+      --my-msg: #dcf8c6;
+      --other-msg: #ffffff;
+    }
+    * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 0; }
+    body { background-color: var(--bg-color); display: flex; justify-content: center; align-items: center; height: 100vh; }
+    
+    .app-container { width: 100%; max-width: 400px; height: 90vh; background: white; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.15); overflow: hidden; display: flex; flex-direction: column; position: relative; }
+    .screen { padding: 30px; display: flex; flex-direction: column; justify-content: center; height: 100%; text-align: center; animation: fadeIn 0.4s ease-in-out; }
     .hidden { display: none !important; }
-    input { width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 4px; }
-    button { width: 100%; padding: 10px; background-color: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; }
-    button:hover { background-color: #0056b3; }
-    #chat-box { height: 300px; border: 1px solid #ddd; border-radius: 4px; overflow-y: auto; padding: 10px; text-align: left; margin-bottom: 10px; background: #fafafa; }
-    .msg { margin-bottom: 8px; font-size: 14px; }
-    .msg-role { font-weight: bold; color: #007bff; }
-    .error { color: red; font-size: 12px; margin-top: 5px; }
+    
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+    h2 { color: #333; margin-bottom: 20px; }
+    p.subtitle { color: #666; font-size: 14px; margin-bottom: 20px; }
+    
+    input[type="text"], input[type="password"] { width: 100%; padding: 12px; margin-bottom: 15px; border: 1px solid #ccc; border-radius: 8px; font-size: 16px; outline: none; transition: border 0.3s; }
+    input:focus { border-color: var(--primary-color); }
+    
+    button.action-btn { width: 100%; padding: 12px; background-color: var(--primary-color); color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; transition: background 0.3s; }
+    button.action-btn:hover { background-color: #0056b3; }
+    
+    .error { color: #d9534f; font-size: 14px; margin-top: -5px; margin-bottom: 15px; min-height: 20px; font-weight: 500; }
+
+    /* Sohbet Ekranı Stilleri */
+    .chat-header { background: #075e54; color: white; padding: 15px; text-align: center; font-weight: bold; font-size: 18px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); z-index: 10; }
+    .chat-area { flex: 1; background-color: var(--chat-bg); padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+    
+    .message { max-width: 75%; padding: 8px 12px; border-radius: 8px; position: relative; font-size: 15px; line-height: 1.4; word-wrap: break-word; display: flex; flex-direction: column; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
+    .message.self { background-color: var(--my-msg); align-self: flex-end; border-top-right-radius: 0; }
+    .message.other { background-color: var(--other-msg); align-self: flex-start; border-top-left-radius: 0; }
+    
+    .msg-role { font-size: 11px; font-weight: bold; color: #555; margin-bottom: 3px; }
+    .msg-time { font-size: 10px; color: #999; align-self: flex-end; margin-top: 4px; }
+    
+    .input-area { background: #f0f0f0; padding: 10px; display: flex; gap: 10px; align-items: center; }
+    .input-area input { margin: 0; border-radius: 20px; padding: 10px 15px; border: none; flex: 1; }
+    .send-btn { background: #075e54; color: white; border: none; border-radius: 50%; width: 40px; height: 40px; cursor: pointer; display: flex; justify-content: center; align-items: center; font-weight: bold; }
+    .send-btn:hover { background: #128c7e; }
   </style>
 
   <!-- Firebase SDK JS (v8) -->
@@ -24,30 +55,40 @@
 </head>
 <body>
 
-  <!-- Aşama 1: İlk Kod Girişi -->
-  <div id="step-1" class="card">
-    <h3>1. Aşama Giriş</h3>
-    <input type="password" id="code1-input" placeholder="Giriş kodunu giriniz">
-    <button onclick="checkStep1()">İlerle</button>
-    <div id="error-1" class="error"></div>
-  </div>
-
-  <!-- Aşama 2: Rol Seçim Kodu -->
-  <div id="step-2" class="card hidden">
-    <h3>2. Aşama Rol Seçimi</h3>
-    <input type="text" id="code2-input" placeholder="K veya Ç giriniz" maxlength="1">
-    <button onclick="checkStep2()">Sohbete Katıl</button>
-    <div id="error-2" class="error"></div>
-  </div>
-
-  <!-- Aşama 3: Sohbet Odası -->
-  <div id="step-3" class="card hidden" style="width: 400px;">
-    <h3>Genel Sohbet (<span id="user-role-display"></span>)</h3>
-    <div id="chat-box"></div>
-    <div style="display: flex; gap: 5px;">
-      <input type="text" id="msg-input" placeholder="Mesaj yazın..." style="margin:0;">
-      <button onclick="sendMessage()" style="width: 80px;">Gönder</button>
+  <div class="app-container">
+    
+    <!-- 1. Aşama: Kod Girişi -->
+    <div id="step-1" class="screen">
+      <h2>Güvenlik Girişi</h2>
+      <p class="subtitle">Sisteme erişmek için şifreyi girin.</p>
+      <input type="password" id="code1-input" placeholder="Giriş Kodu">
+      <div id="error-1" class="error"></div>
+      <button class="action-btn" onclick="checkStep1()">İleri</button>
     </div>
+
+    <!-- 2. Aşama: Rol Seçimi -->
+    <div id="step-2" class="screen hidden">
+      <h2>Kimlik Belirleme</h2>
+      <p class="subtitle">Sohbete hangi harf ile katılacaksın?</p>
+      <input type="text" id="code2-input" placeholder="K veya Ç giriniz" maxlength="1">
+      <div id="error-2" class="error"></div>
+      <button class="action-btn" onclick="checkStep2()">Sohbete Bağlan</button>
+    </div>
+
+    <!-- 3. Aşama: Sohbet Arayüzü -->
+    <div id="step-3" class="hidden" style="display: flex; flex-direction: column; height: 100%;">
+      <div class="chat-header">
+        Özel Sohbet Odası (<span id="user-role-display"></span>)
+      </div>
+      <div id="chat-area" class="chat-area">
+        <!-- Mesajlar buraya yüklenecek -->
+      </div>
+      <div class="input-area">
+        <input type="text" id="msg-input" placeholder="Bir mesaj yazın...">
+        <button class="send-btn" onclick="sendMessage()">➤</button>
+      </div>
+    </div>
+
   </div>
 
   <script>
@@ -62,20 +103,27 @@
     const validCodesStep1 = ["Cokgüzelsin", "Yalan", "Tempo", "Üçkalp", "Kalpsizsin", "Asksakızı", "Olmazoğlan"];
     let userRole = "";
 
-    // Aşama 1 Doğrulama
     function checkStep1() {
-      const val = document.getElementById("code1-input").value.trim();
+      const inputEl = document.getElementById("code1-input");
+      const val = inputEl.value.trim();
+      const errorEl = document.getElementById("error-1");
+      
+      // Şifreleri büyük/küçük harf duyarlılığından biraz kurtarmak istersen burayı geliştirebiliriz
       if (validCodesStep1.includes(val)) {
+        errorEl.innerText = "";
         document.getElementById("step-1").classList.add("hidden");
         document.getElementById("step-2").classList.remove("hidden");
       } else {
-        document.getElementById("error-1").innerText = "Hatalı kod girdiniz.";
+        errorEl.innerText = "Hatalı giriş kodu!";
+        inputEl.style.borderColor = "#d9534f";
       }
     }
 
-    // Aşama 2 Doğrulama
     function checkStep2() {
-      const val = document.getElementById("code2-input").value.trim().toUpperCase();
+      const inputEl = document.getElementById("code2-input");
+      const val = inputEl.value.trim().toUpperCase();
+      const errorEl = document.getElementById("error-2");
+
       if (val === "K" || val === "Ç") {
         userRole = val;
         document.getElementById("user-role-display").innerText = userRole;
@@ -83,28 +131,23 @@
         document.getElementById("step-3").classList.remove("hidden");
         initChat();
       } else {
-        document.getElementById("error-2").innerText = "Sadece 'K' veya 'Ç' girebilirsiniz.";
+        errorEl.innerText = "Sadece 'K' veya 'Ç' girebilirsiniz.";
+        inputEl.style.borderColor = "#d9534f";
       }
     }
 
-    // Sohbet Başlatma ve Sync
     function initChat() {
-      // Yerel Kayıtları Yükle
       loadLocalMessages();
-
-      // Firebase Dinleyici (Veri değiştikçe tetiklenir)
       db.on("value", (snapshot) => {
         const data = snapshot.val();
         if (data) {
           const msgArray = Object.values(data);
-          // LocalStorage Güncelle
           localStorage.setItem("chat_history", JSON.stringify(msgArray));
           renderMessages(msgArray);
         }
       });
     }
 
-    // Mesaj Gönderme
     function sendMessage() {
       const input = document.getElementById("msg-input");
       const text = input.value.trim();
@@ -116,25 +159,43 @@
         timestamp: Date.now()
       };
 
-      // Firebase'e Yazma
       db.push(newMsg);
       input.value = "";
+      input.focus();
     }
 
-    // Mesajları Ekrana Bastırma
+    function formatTime(timestamp) {
+      const date = new Date(timestamp);
+      const hours = date.getHours().toString().padStart(2, '0');
+      const minutes = date.getMinutes().toString().padStart(2, '0');
+      return `${hours}:${minutes}`;
+    }
+
     function renderMessages(messages) {
-      const chatBox = document.getElementById("chat-box");
-      chatBox.innerHTML = "";
+      const chatArea = document.getElementById("chat-area");
+      chatArea.innerHTML = "";
+      
       messages.forEach((msg) => {
-        const div = document.createElement("div");
-        div.className = "msg";
-        div.innerHTML = `<span class="msg-role">[${msg.role}]:</span> ${escapeHtml(msg.text)}`;
-        chatBox.appendChild(div);
+        const msgDiv = document.createElement("div");
+        // Gönderen ben isem 'self', değilse 'other' class'ı ekle
+        const isSelf = msg.role === userRole;
+        msgDiv.className = `message ${isSelf ? 'self' : 'other'}`;
+        
+        // Sadece karşı tarafın mesajlarında üstte Kimin (K/Ç) yazdığını gösterelim
+        const roleLabel = !isSelf ? `<div class="msg-role">${msg.role}</div>` : '';
+        
+        msgDiv.innerHTML = `
+          ${roleLabel}
+          <div class="msg-text">${escapeHtml(msg.text)}</div>
+          <div class="msg-time">${formatTime(msg.timestamp)}</div>
+        `;
+        chatArea.appendChild(msgDiv);
       });
-      chatBox.scrollTop = chatBox.scrollHeight;
+      
+      // Her yeni mesajda en alta kaydır
+      chatArea.scrollTop = chatArea.scrollHeight;
     }
 
-    // LocalStorage'dan İlk Yükleme
     function loadLocalMessages() {
       const localData = localStorage.getItem("chat_history");
       if (localData) {
@@ -142,12 +203,11 @@
       }
     }
 
-    // Güvenlik için XSS Temizliği
     function escapeHtml(text) {
       return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
     }
 
-    // Enter tuşu desteği
+    // Enter tuşuna basınca mesaj gönderme
     document.getElementById("msg-input").addEventListener("keypress", (e) => {
       if (e.key === "Enter") sendMessage();
     });
